@@ -4,12 +4,21 @@ import { cosineSim } from './similarity.js';
  * Simulate HNSW traversal.
  * Returns steps array + summary stats.
  */
-export function runHNSWSearch(queryEmbedding, nodes, k = 5) {
+export function runHNSWSearch(queryEmbedding, nodes, edges, k = 5) {
   const steps = [];
   const seen = new Set();
   const n = nodes.length;
 
-  // ── Layer 2: coarse entry (pick random start far from query cluster) ──
+  // Build basic adjacency list
+  const adj = Array.from({ length: n }, () => []);
+  if (edges) {
+    edges.forEach(e => {
+      adj[e.from].push(e.to);
+      adj[e.to].push(e.from); // assuming undirected
+    });
+  }
+
+  // ── Layer 2: coarse entry (pick random start) ──
   const entryId = Math.floor(Math.random() * n);
   const entrySim = parseFloat(cosineSim(queryEmbedding, nodes[entryId].embedding).toFixed(4));
   steps.push({ nodeId: entryId, sim: entrySim, type: 'entry', layer: 2, hop: 0 });
@@ -19,23 +28,24 @@ export function runHNSWSearch(queryEmbedding, nodes, k = 5) {
   // ── Greedy traversal ──
   const layerConfig = [
     { layer: 2, hops: 2, efSearch: 6 },
-    { layer: 1, hops: 2, efSearch: 10 },
-    { layer: 0, hops: 3, efSearch: 16 },
+    { layer: 1, hops: 3, efSearch: 10 },
+    { layer: 0, hops: 4, efSearch: 16 },
   ];
 
   for (const { layer, hops, efSearch } of layerConfig) {
     for (let hop = 0; hop < hops; hop++) {
-      // Sample candidate neighbors (simulates actual graph neighbor evaluation)
-      const unseen = [];
-      for (let i = 0; i < n; i++) { if (!seen.has(i)) unseen.push(i); }
-      if (unseen.length === 0) break;
-
-      // Shuffle + take efSearch candidates
-      for (let i = unseen.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [unseen[i], unseen[j]] = [unseen[j], unseen[i]];
+      // Get ACTUAL neighbors of the current node
+      const neighbors = adj[current.id].filter(id => !seen.has(id));
+      if (neighbors.length === 0) {
+        // If we hit a dead end, randomly jump (fallback for disconnected graph segments in visualizer)
+        const unseen = [];
+        for (let i = 0; i < n; i++) if (!seen.has(i)) unseen.push(i);
+        if (unseen.length === 0) break;
+        neighbors.push(unseen[Math.floor(Math.random() * unseen.length)]);
       }
-      const candidates = unseen.slice(0, efSearch);
+
+      // Take up to efSearch candidates
+      const candidates = neighbors.slice(0, efSearch);
 
       let bestSim = current.sim;
       let bestId = null;

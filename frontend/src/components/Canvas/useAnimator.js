@@ -24,15 +24,22 @@ export function useAnimator(stateRef, _draw, onStepUpdate, onDone) {
         case 'entry':
           state.nodeStates[step.nodeId] = 'entry';
           prevHopNode = step.nodeId;
+          state.currentNode = step.nodeId;
+          state.currentLayer = step.layer;
+          state.activePath = [];
           visitedCount++;
           break;
         case 'hop':
           state.nodeStates[step.nodeId] = 'visited';
-          if (prevHopNode !== null && prevHopNode !== step.nodeId) {
+          if (state.currentLayer !== step.layer) {
+            state.activePath = []; // New layer, start fresh path
+            state.currentLayer = step.layer;
+          } else if (prevHopNode !== null && prevHopNode !== step.nodeId) {
             state.activePath.push({ from: prevHopNode, to: step.nodeId });
             if (state.activePath.length > 10) state.activePath.shift();
           }
           prevHopNode = step.nodeId;
+          state.currentNode = step.nodeId;
           break;
         case 'evaluate':
           if (!state.nodeStates[step.nodeId]) {
@@ -44,6 +51,7 @@ export function useAnimator(stateRef, _draw, onStepUpdate, onDone) {
           break;
         case 'result':
           state.nodeStates[step.nodeId] = 'result';
+          state.currentNode = null;
           break;
       }
 

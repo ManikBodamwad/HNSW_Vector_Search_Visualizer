@@ -8,7 +8,7 @@ export default function GraphCanvas({ nodes, edges, searchTrigger, onStepUpdate,
   const containerRef = useRef(null);
   const [tooltip, setTooltip] = useState(null);
 
-  const { stateRef, startLoop, stopLoop, handleDrag } = useGraphRenderer(canvasRef, nodes, edges);
+  const { stateRef, startLoop, stopLoop, handleDrag, handleZoom } = useGraphRenderer(canvasRef, nodes, edges);
   const animatorRef = useRef(null);
 
   const isDragging = useRef(false);
@@ -28,6 +28,8 @@ export default function GraphCanvas({ nodes, edges, searchTrigger, onStepUpdate,
           s.ripples      = [];
           s.queryNodePos = queryPos ? { ...queryPos, pulse: 0 } : null;
           s.isBrute      = isBrute;
+          s.currentLayer = null; // Reset layer
+          s.currentNode  = null; // Reset current node
           animatorRef.current?.play(steps, speed, isBrute);
         },
         cancel: () => animatorRef.current?.cancel(),
@@ -117,6 +119,12 @@ export default function GraphCanvas({ nodes, edges, searchTrigger, onStepUpdate,
   }, []);
 
   const handleMouseLeave = useCallback(() => setTooltip(null), []);
+  
+  const handleWheel = useCallback((e) => {
+    e.preventDefault();
+    handleZoom(e.deltaY);
+  }, [handleZoom]);
+
   const statusLabel = { default: 'Not visited', visited: 'Visited', entry: 'Entry point', result: '✓ Result' };
 
   return (
@@ -126,6 +134,7 @@ export default function GraphCanvas({ nodes, edges, searchTrigger, onStepUpdate,
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
       onMouseLeave={handleMouseLeave}
+      onWheel={handleWheel}
       style={{ touchAction: 'none' }} // prevent scrolling while dragging
     >
       <canvas ref={canvasRef} className="graph-canvas" />

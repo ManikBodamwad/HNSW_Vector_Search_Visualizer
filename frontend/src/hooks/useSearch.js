@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
-import { nodes, getQueryEmbedding } from '../data/graphData.js';
+import { nodes, edges, getQueryEmbedding } from '../data/graphData.js';
 import { runHNSWSearch } from '../engine/hnsw.js';
 import { runBruteForce } from '../engine/bruteForce.js';
 
@@ -117,7 +117,7 @@ export function useSearch(searchTrigger, canvasStateRef) {
     const isBrute = algo === 'brute';
     const result = isBrute
       ? runBruteForce(embedding, nodes)
-      : runHNSWSearch(embedding, nodes);
+      : runHNSWSearch(embedding, nodes, edges);
 
     totalStepsRef.current = result.steps.length;
 

@@ -275,6 +275,16 @@ export function useGraphRenderer(canvasRef, nodes, edges) {
         ctx.lineWidth = 1.2;
         ctx.stroke();
       }
+
+      // Current exploring node pulse
+      if (state.currentNode === i && !state.isBrute) {
+        const pulse = 0.5 + 0.5 * Math.sin(state.tick * 0.15);
+        ctx.beginPath();
+        ctx.arc(p.sx, p.sy, r + 6 + pulse * 6, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(96,165,250,${0.6 - pulse * 0.4})`;
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      }
     });
 
     // ── Query node ──
@@ -338,5 +348,14 @@ export function useGraphRenderer(canvasRef, nodes, edges) {
     cam.rotX = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, cam.rotX));
   }, []);
 
-  return { draw, stateRef, startLoop, stopLoop, handleDrag };
+  const handleZoom = useCallback((deltaY) => {
+    const cam = stateRef.current.cam;
+    // deltaY is usually around 100 for a mouse wheel tick
+    // Increase FOV to zoom out, decrease FOV to zoom in
+    cam.fov += deltaY * 0.5;
+    // clamp fov to avoid inverting or going too far
+    cam.fov = Math.max(150, Math.min(1500, cam.fov));
+  }, []);
+
+  return { draw, stateRef, startLoop, stopLoop, handleDrag, handleZoom };
 }
