@@ -8,8 +8,11 @@ export default function GraphCanvas({ nodes, edges, searchTrigger, onStepUpdate,
   const containerRef = useRef(null);
   const [tooltip, setTooltip] = useState(null);
 
-  const { stateRef, startLoop, stopLoop } = useGraphRenderer(canvasRef, nodes, edges);
+  const { stateRef, startLoop, stopLoop, handleDrag } = useGraphRenderer(canvasRef, nodes, edges);
   const animatorRef = useRef(null);
+
+  const isDragging = useRef(false);
+  const lastPos = useRef({ x: 0, y: 0 });
 
   const handleStepUpdate = useCallback((...args) => onStepUpdate?.(...args), [onStepUpdate]);
   const handleDone = useCallback(() => onDone?.(), [onDone]);
@@ -53,8 +56,23 @@ export default function GraphCanvas({ nodes, edges, searchTrigger, onStepUpdate,
 
   useEffect(() => { startLoop(); return () => stopLoop(); }, [startLoop, stopLoop]);
 
-  // Tooltip on hover
-  const handleMouseMove = useCallback(e => {
+  // Pointer events for Tooltip and Dragging
+  const handlePointerDown = useCallback((e) => {
+    isDragging.current = true;
+    lastPos.current = { x: e.clientX, y: e.clientY };
+    containerRef.current?.setPointerCapture(e.pointerId);
+    setTooltip(null);
+  }, []);
+
+  const handlePointerMove = useCallback((e) => {
+    if (isDragging.current) {
+      const dx = e.clientX - lastPos.current.x;
+      const dy = e.clientY - lastPos.current.y;
+      handleDrag(dx, dy);
+      lastPos.current = { x: e.clientX, y: e.clientY };
+      return;
+    }
+
     if (!nodes.length || !canvasRef.current) return;
     const rect = canvasRef.current.getBoundingClientRect();
     const mx = e.clientX - rect.left;
@@ -91,14 +109,24 @@ export default function GraphCanvas({ nodes, edges, searchTrigger, onStepUpdate,
     } else {
       setTooltip(null);
     }
-  }, [nodes, stateRef]);
+  }, [nodes, stateRef, handleDrag]);
+
+  const handlePointerUp = useCallback((e) => {
+    isDragging.current = false;
+    containerRef.current?.releasePointerCapture(e.pointerId);
+  }, []);
 
   const handleMouseLeave = useCallback(() => setTooltip(null), []);
   const statusLabel = { default: 'Not visited', visited: 'Visited', entry: 'Entry point', result: '✓ Result' };
 
   return (
     <div ref={containerRef} className="canvas-area"
-      onMouseMove={handleMouseMove} onMouseLeave={handleMouseLeave}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
+      onMouseLeave={handleMouseLeave}
+      style={{ touchAction: 'none' }} // prevent scrolling while dragging
     >
       <canvas ref={canvasRef} className="graph-canvas" />
 

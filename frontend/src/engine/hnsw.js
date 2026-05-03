@@ -43,8 +43,9 @@ export function runHNSWSearch(queryEmbedding, nodes, k = 5) {
       for (const idx of candidates) {
         const sim = parseFloat(cosineSim(queryEmbedding, nodes[idx].embedding).toFixed(4));
         seen.add(idx);
-        steps.push({ nodeId: idx, sim, type: 'evaluate', layer, hop });
-        if (sim > bestSim) { bestSim = sim; bestId = idx; }
+        const isHit = sim > bestSim;
+        steps.push({ nodeId: idx, sim, type: 'evaluate', layer, hop, isHit });
+        if (isHit) { bestSim = sim; bestId = idx; }
       }
 
       if (bestId !== null) {

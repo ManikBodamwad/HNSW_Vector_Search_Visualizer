@@ -450,6 +450,7 @@ html, body, #root {
   box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 1px 0 rgba(255,255,255,0.04) inset;
   overflow: hidden;
   white-space: nowrap;
+  max-width: 95vw;
 }
 
 .hud-cell {
@@ -554,7 +555,12 @@ html, body, #root {
   display: flex;
   align-items: center;
   gap: 4px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  max-width: 320px;
 }
+.hud-chip-row::-webkit-scrollbar { height: 2px; }
+.hud-chip-row::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 1px; }
 .hud-chip {
   height: 22px;
   padding: 0 8px;

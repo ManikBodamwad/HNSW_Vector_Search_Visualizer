@@ -180,22 +180,36 @@ export function useGraphRenderer(canvasRef, nodes, edges) {
       ctx.beginPath();
       ctx.arc(r.sx, r.sy, r.r, 0, Math.PI * 2);
       ctx.strokeStyle = r.color + hex;
-      ctx.lineWidth = 1;
+      ctx.lineWidth = 2;
       ctx.stroke();
     });
 
-    // Spawn ripples on state change
-    Object.entries(state.nodeStates).forEach(([id, ns]) => {
-      if (state.prevStates[id] !== ns) {
-        const p = projected[parseInt(id)];
+    if (state.rippleQueue) {
+      state.rippleQueue.forEach(({ id, isHit }) => {
+        const p = projected[id];
         if (p) {
-          const color = ns === 'result' ? '#059669' :
-                        ns === 'entry'  ? '#60A5FA' :
-                        state.isBrute   ? '#EF4444' : '#2563EB';
+          const color = isHit ? '#10B981' : '#EF4444'; // Green for hit, Red for miss
           state.ripples.push({
             sx: p.sx, sy: p.sy,
-            r: 3, maxR: 26, alpha: 0.85, color
+            r: 5, maxR: 35, alpha: 0.95, color
           });
+        }
+      });
+      state.rippleQueue = [];
+    }
+
+    // Spawn ripples on state change (for entry/result)
+    Object.entries(state.nodeStates).forEach(([id, ns]) => {
+      if (state.prevStates[id] !== ns) {
+        if (ns === 'entry' || ns === 'result') {
+          const p = projected[parseInt(id)];
+          if (p) {
+            const color = ns === 'result' ? '#059669' : '#60A5FA';
+            state.ripples.push({
+              sx: p.sx, sy: p.sy,
+              r: 3, maxR: 45, alpha: 0.85, color
+            });
+          }
         }
         state.prevStates[id] = ns;
       }
@@ -316,5 +330,13 @@ export function useGraphRenderer(canvasRef, nodes, edges) {
     }
   }, []);
 
-  return { draw, stateRef, startLoop, stopLoop };
+  const handleDrag = useCallback((dx, dy) => {
+    const cam = stateRef.current.cam;
+    cam.autoRotate = false;
+    cam.rotY += dx * 0.006;
+    cam.rotX -= dy * 0.006;
+    cam.rotX = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, cam.rotX));
+  }, []);
+
+  return { draw, stateRef, startLoop, stopLoop, handleDrag };
 }

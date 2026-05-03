@@ -39,6 +39,8 @@ export function useAnimator(stateRef, _draw, onStepUpdate, onDone) {
             state.nodeStates[step.nodeId] = 'visited';
             visitedCount++;
           }
+          state.rippleQueue = state.rippleQueue || [];
+          state.rippleQueue.push({ id: step.nodeId, isHit: step.isHit });
           break;
         case 'result':
           state.nodeStates[step.nodeId] = 'result';
