@@ -30,6 +30,13 @@ export default function GraphCanvas({ nodes, edges, searchTrigger, onStepUpdate,
           s.isBrute      = isBrute;
           s.currentLayer = null; // Reset layer
           s.currentNode  = null; // Reset current node
+          
+          // Reset camera auto-zoom state
+          s.cam.userInteracted = false;
+          s.cam.targetDistance = 520;
+          s.cam.targetPanX = 0;
+          s.cam.targetPanY = 0;
+
           animatorRef.current?.play(steps, speed, isBrute);
         },
         cancel: () => animatorRef.current?.cancel(),

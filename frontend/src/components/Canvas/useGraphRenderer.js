@@ -4,9 +4,9 @@ import { useRef, useCallback } from 'react';
 // 3D → 2D perspective projection
 // nodes have x ∈ [0,1000], y ∈ [0,800]; we add a z dimension from cluster depth
 function project3D(x3, y3, z3, W, H, cam) {
-  // Center the space and apply pan
-  const cx = x3 - 500 + cam.panX;
-  const cy = y3 - 400 + cam.panY;
+  // Center the space and apply pan with fallback for HMR state
+  const cx = x3 - 500 + (cam.panX || 0);
+  const cy = y3 - 400 + (cam.panY || 0);
   const cz = z3;
 
   // Rotate around Y axis
@@ -104,12 +104,35 @@ export function useGraphRenderer(canvasRef, nodes, edges) {
     const cam = state.cam;
     state.tick++;
 
-    // Apply smooth inertia
+    // Apply smooth inertia (with fallback for HMR state preservation)
+    cam.panX = cam.panX || 0;
+    cam.panY = cam.panY || 0;
+    cam.targetPanX = cam.targetPanX || 0;
+    cam.targetPanY = cam.targetPanY || 0;
+
     cam.rotY += (cam.targetRotY - cam.rotY) * 0.15;
     cam.rotX += (cam.targetRotX - cam.rotX) * 0.15;
     cam.distance += (cam.targetDistance - cam.distance) * 0.15;
     cam.panX += (cam.targetPanX - cam.panX) * 0.15;
     cam.panY += (cam.targetPanY - cam.panY) * 0.15;
+
+    // Cinematic Auto-Zoom
+    if (!cam.userInteracted && !state.isBrute) {
+      let focusNode = null;
+      if (state.currentNode !== null) {
+        focusNode = nodes[state.currentNode];
+      } else if (state.queryNodePos) {
+        focusNode = state.queryNodePos;
+      }
+      
+      if (focusNode) {
+        // Pan to center the node, zoom in slightly
+        cam.targetPanX = 500 - focusNode.x;
+        cam.targetPanY = 400 - focusNode.y;
+        cam.targetDistance = 220; // zoom in
+        cam.targetRotX = 0.25;    // look down slightly
+      }
+    }
 
     // Auto-rotate slowly
     if (cam.autoRotate) {
@@ -358,6 +381,7 @@ export function useGraphRenderer(canvasRef, nodes, edges) {
   const handleDrag = useCallback((dx, dy, isPan = false) => {
     const cam = stateRef.current.cam;
     cam.autoRotate = false;
+    cam.userInteracted = true; // Stop auto-zoom if user drags
     if (isPan) {
       cam.targetPanX += dx * 1.5;
       cam.targetPanY += dy * 1.5;
@@ -370,6 +394,7 @@ export function useGraphRenderer(canvasRef, nodes, edges) {
 
   const handleZoom = useCallback((deltaY) => {
     const cam = stateRef.current.cam;
+    cam.userInteracted = true; // Stop auto-zoom if user zooms
     cam.targetDistance += deltaY * 1.2;
     // Allow zooming way out, but not clipping through the camera
     cam.targetDistance = Math.max(100, Math.min(5000, cam.targetDistance));

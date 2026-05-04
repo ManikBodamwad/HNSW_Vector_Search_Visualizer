@@ -50,12 +50,12 @@ The core traversal logic for a single layer in HNSW follows greedy routing:
 
 ```mermaid
 graph TD
-    Start[Start at Entry Node] --> Eval[Evaluate Neighbors of Current Node]
-    Eval --> Compare{Is any neighbor<br>closer to Query<br>than Current Node?}
-    Compare -- Yes --> Hop[Hop to closest neighbor]
+    Start["Start at Entry Node"] --> Eval["Evaluate Neighbors of Current Node"]
+    Eval --> Compare{"Is any neighbor<br/>closer to Query<br/>than Current Node?"}
+    Compare -- Yes --> Hop["Hop to closest neighbor"]
     Hop --> Eval
-    Compare -- No --> LocalMin[Local Minimum Reached!]
-    LocalMin --> Result[Return Current Node as Nearest Neighbor]
+    Compare -- No --> LocalMin["Local Minimum Reached!"]
+    LocalMin --> Result["Return Current Node as Nearest Neighbor"]
 
     classDef default fill:#131929,stroke:#2563EB,stroke-width:2px,color:#E2E8F0;
     classDef success fill:#059669,stroke:#047857,stroke-width:2px,color:#fff;
