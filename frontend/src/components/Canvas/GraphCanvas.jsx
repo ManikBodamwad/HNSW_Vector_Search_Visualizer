@@ -30,6 +30,7 @@ export default function GraphCanvas({ nodes, edges, searchTrigger, onStepUpdate,
           s.isBrute      = isBrute;
           s.currentLayer = null; // Reset layer
           s.currentNode  = null; // Reset current node
+          s.isComplete   = false; // Reset completion flag
           
           // Reset camera auto-zoom state
           s.cam.userInteracted = false;

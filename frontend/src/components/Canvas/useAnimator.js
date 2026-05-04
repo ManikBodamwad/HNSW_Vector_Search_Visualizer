@@ -14,6 +14,7 @@ export function useAnimator(stateRef, _draw, onStepUpdate, onDone) {
 
     function playStep(index) {
       if (index >= steps.length) {
+        stateRef.current.isComplete = true; // Signal camera to pull back
         onDone?.();
         return;
       }

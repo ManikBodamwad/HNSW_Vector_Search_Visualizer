@@ -3,8 +3,9 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  /* Surfaces */
-  --bg:              #0A0E1A;
+  /* Brand & Core Colors */
+  --bg-core:         #050810;
+  --bg-glow:         #10162A;
   --surface-low:     #0F1525;
   --surface:         #131929;
   --surface-hi:      #1A2236;
@@ -46,7 +47,7 @@
 html, body, #root {
   height: 100%; width: 100%;
   overflow: hidden;
-  background: var(--bg);
+  background: var(--bg-core);
   color: var(--text-primary);
   font-family: var(--font);
   font-size: 13px;
@@ -166,7 +167,7 @@ html, body, #root {
 .canvas-area {
   position: absolute;
   inset: 0;
-  background: var(--bg);
+  background: radial-gradient(circle at center, var(--bg-glow) 0%, var(--bg-core) 90%);
   cursor: grab;
 }
 .canvas-area.is-dragging {
@@ -188,6 +189,7 @@ html, body, #root {
   -webkit-backdrop-filter: blur(16px);
   overflow: hidden;
   z-index: 20;
+  box-shadow: 0 16px 32px rgba(0,0,0,0.6), inset 0 0 0 1px rgba(255,255,255,0.03), inset 0 1px 0 rgba(255,255,255,0.08);
 }
 
 .panel-header {
@@ -371,6 +373,7 @@ html, body, #root {
   height: 24px;
   border-radius: var(--r-sm);
   border: 1px solid var(--border);
+  box-shadow: 0 16px 32px rgba(0,0,0,0.6), inset 0 0 0 1px rgba(255,255,255,0.03), inset 0 1px 0 rgba(255,255,255,0.08);
   background: var(--surface);
   display: flex;
   align-items: center;

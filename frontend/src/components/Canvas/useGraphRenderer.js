@@ -118,19 +118,27 @@ export function useGraphRenderer(canvasRef, nodes, edges) {
 
     // Cinematic Auto-Zoom
     if (!cam.userInteracted && !state.isBrute) {
-      let focusNode = null;
-      if (state.currentNode !== null) {
-        focusNode = nodes[state.currentNode];
-      } else if (state.queryNodePos) {
-        focusNode = state.queryNodePos;
-      }
-      
-      if (focusNode) {
-        // Pan to center the node, zoom in slightly
-        cam.targetPanX = 500 - focusNode.x;
-        cam.targetPanY = 400 - focusNode.y;
-        cam.targetDistance = 220; // zoom in
-        cam.targetRotX = 0.25;    // look down slightly
+      if (state.isComplete) {
+        // 🌟 Wow Factor: Pull back to reveal the entire path!
+        cam.targetPanX = 0;
+        cam.targetPanY = 0;
+        cam.targetDistance = 650; // Zoom out far enough to see the whole diagram
+        cam.targetRotX = 0.22;
+      } else {
+        let focusNode = null;
+        if (state.currentNode !== null) {
+          focusNode = nodes[state.currentNode];
+        } else if (state.queryNodePos) {
+          focusNode = state.queryNodePos;
+        }
+        
+        if (focusNode) {
+          // Pan to center the node, zoom in close during action
+          cam.targetPanX = 500 - focusNode.x;
+          cam.targetPanY = 400 - focusNode.y;
+          cam.targetDistance = 280; // zoom in
+          cam.targetRotX = 0.35;    // look down slightly
+        }
       }
     }
 
@@ -143,9 +151,8 @@ export function useGraphRenderer(canvasRef, nodes, edges) {
     ctx.save();
     ctx.scale(dpr, dpr);
 
-    // Background
-    ctx.fillStyle = C.bg;
-    ctx.fillRect(0, 0, W, H);
+    // Clear canvas cleanly (no motion blur smearing)
+    ctx.clearRect(0, 0, W, H);
 
     // Subtle dot grid (static, doesn't rotate)
     const gridSpacing = 55;
@@ -153,7 +160,7 @@ export function useGraphRenderer(canvasRef, nodes, edges) {
       for (let gy = 0; gy < H; gy += gridSpacing) {
         ctx.beginPath();
         ctx.arc(gx, gy, 0.7, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(255,255,255,0.06)';
+        ctx.fillStyle = 'rgba(100, 150, 255, 0.08)'; // Slightly blueish for sci-fi feel
         ctx.fill();
       }
     }
@@ -180,33 +187,30 @@ export function useGraphRenderer(canvasRef, nodes, edges) {
       if (isActive) return;
 
       const avgDepth = (p1.depth + p2.depth) / 2;
-      const depthAlpha = Math.max(0.05, Math.min(1, 1 - (avgDepth + 150) / 400));
+      const depthAlpha = Math.max(0.02, Math.min(1, 1 - (avgDepth + 150) / 400));
 
       ctx.beginPath();
       ctx.moveTo(p1.sx, p1.sy);
       ctx.lineTo(p2.sx, p2.sy);
-      ctx.strokeStyle = `rgba(96,120,168,${0.22 * depthAlpha})`;
-      ctx.lineWidth = 0.7;
+      ctx.strokeStyle = `rgba(60, 90, 150, ${0.15 * depthAlpha})`;
+      ctx.lineWidth = 0.5;
       ctx.stroke();
     });
 
-    // ── Active path edges with glow ──
+    // ── Active path edges (Clean lines, not messy gradients) ──
     state.activePath.forEach(({ from, to }) => {
       const p1 = projected[from];
       const p2 = projected[to];
       if (!p1 || !p2) return;
 
-      // Glow halo
+      const isBrute = state.isBrute;
+      
+      // Clean, distinct core line
       ctx.beginPath(); ctx.moveTo(p1.sx, p1.sy); ctx.lineTo(p2.sx, p2.sy);
-      ctx.strokeStyle = state.isBrute
-        ? 'rgba(239,68,68,0.12)'
-        : 'rgba(59,130,246,0.14)';
-      ctx.lineWidth = 10; ctx.lineCap = 'round'; ctx.stroke();
-
-      // Core
-      ctx.beginPath(); ctx.moveTo(p1.sx, p1.sy); ctx.lineTo(p2.sx, p2.sy);
-      ctx.strokeStyle = activeColor;
-      ctx.lineWidth = 1.5; ctx.stroke();
+      ctx.strokeStyle = isBrute ? '#EF4444' : '#3B82F6';
+      ctx.lineWidth = 2.5; 
+      ctx.lineCap = 'round'; 
+      ctx.stroke();
     });
 
     // ── Ripples ──
@@ -278,29 +282,25 @@ export function useGraphRenderer(canvasRef, nodes, edges) {
 
       const r = baseRadius * scalePerspective;
 
-      // Glow halo for active nodes
-      if (glowStrength > 0) {
-        const glowR = r * 4.5;
-        const g = ctx.createRadialGradient(p.sx, p.sy, 0, p.sx, p.sy, glowR);
-        g.addColorStop(0, color + '35');
-        g.addColorStop(1, 'transparent');
-        ctx.beginPath();
-        ctx.arc(p.sx, p.sy, glowR, 0, Math.PI * 2);
-        ctx.fillStyle = g;
-        ctx.fill();
-      }
-
-      // Node body
+      // Clean solid fills (removed messy radial gradients)
       ctx.beginPath();
       ctx.arc(p.sx, p.sy, r, 0, Math.PI * 2);
       ctx.fillStyle = color;
       ctx.fill();
 
-      // Specular highlight
+      // Simple, subtle glow for active nodes
+      if (glowStrength > 0) {
+        ctx.beginPath();
+        ctx.arc(p.sx, p.sy, r * 3, 0, Math.PI * 2);
+        ctx.fillStyle = `${color}40`; // 25% opacity hex
+        ctx.fill();
+      }
+
+      // Specular highlight for active nodes
       if (ns !== 'default') {
         ctx.beginPath();
-        ctx.arc(p.sx - r * 0.3, p.sy - r * 0.3, r * 0.35, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(255,255,255,0.45)';
+        ctx.arc(p.sx - r * 0.3, p.sy - r * 0.3, r * 0.4, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255,255,255,0.8)';
         ctx.fill();
       }
 
