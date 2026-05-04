@@ -4,9 +4,9 @@ import { useRef, useCallback } from 'react';
 // 3D → 2D perspective projection
 // nodes have x ∈ [0,1000], y ∈ [0,800]; we add a z dimension from cluster depth
 function project3D(x3, y3, z3, W, H, cam) {
-  // Center the space
-  const cx = x3 - 500;
-  const cy = y3 - 400;
+  // Center the space and apply pan
+  const cx = x3 - 500 + cam.panX;
+  const cy = y3 - 400 + cam.panY;
   const cz = z3;
 
   // Rotate around Y axis
@@ -64,6 +64,10 @@ export function useGraphRenderer(canvasRef, nodes, edges) {
       rotX: 0.18,    // gentle downward tilt
       targetRotY: 0.25,
       targetRotX: 0.18,
+      panX: 0,
+      panY: 0,
+      targetPanX: 0,
+      targetPanY: 0,
       distance: 520,
       targetDistance: 520,
       fov:  520,
@@ -104,6 +108,8 @@ export function useGraphRenderer(canvasRef, nodes, edges) {
     cam.rotY += (cam.targetRotY - cam.rotY) * 0.15;
     cam.rotX += (cam.targetRotX - cam.rotX) * 0.15;
     cam.distance += (cam.targetDistance - cam.distance) * 0.15;
+    cam.panX += (cam.targetPanX - cam.panX) * 0.15;
+    cam.panY += (cam.targetPanY - cam.panY) * 0.15;
 
     // Auto-rotate slowly
     if (cam.autoRotate) {
@@ -349,12 +355,17 @@ export function useGraphRenderer(canvasRef, nodes, edges) {
     }
   }, []);
 
-  const handleDrag = useCallback((dx, dy) => {
+  const handleDrag = useCallback((dx, dy, isPan = false) => {
     const cam = stateRef.current.cam;
     cam.autoRotate = false;
-    cam.targetRotY += dx * 0.006;
-    cam.targetRotX -= dy * 0.006;
-    cam.targetRotX = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, cam.targetRotX));
+    if (isPan) {
+      cam.targetPanX += dx * 1.5;
+      cam.targetPanY += dy * 1.5;
+    } else {
+      cam.targetRotY += dx * 0.006;
+      cam.targetRotX -= dy * 0.006;
+      cam.targetRotX = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, cam.targetRotX));
+    }
   }, []);
 
   const handleZoom = useCallback((deltaY) => {

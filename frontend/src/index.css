@@ -167,6 +167,10 @@ html, body, #root {
   position: absolute;
   inset: 0;
   background: var(--bg);
+  cursor: grab;
+}
+.canvas-area.is-dragging {
+  cursor: grabbing;
 }
 .graph-canvas {
   display: block;

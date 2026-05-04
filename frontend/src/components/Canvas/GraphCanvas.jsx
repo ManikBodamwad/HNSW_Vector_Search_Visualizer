@@ -63,6 +63,7 @@ export default function GraphCanvas({ nodes, edges, searchTrigger, onStepUpdate,
     isDragging.current = true;
     lastPos.current = { x: e.clientX, y: e.clientY };
     containerRef.current?.setPointerCapture(e.pointerId);
+    containerRef.current?.classList.add('is-dragging');
     setTooltip(null);
   }, []);
 
@@ -70,7 +71,9 @@ export default function GraphCanvas({ nodes, edges, searchTrigger, onStepUpdate,
     if (isDragging.current) {
       const dx = e.clientX - lastPos.current.x;
       const dy = e.clientY - lastPos.current.y;
-      handleDrag(dx, dy);
+      // Right click (2) or Shift key allows panning
+      const isPan = e.buttons === 2 || e.shiftKey;
+      handleDrag(dx, dy, isPan);
       lastPos.current = { x: e.clientX, y: e.clientY };
       return;
     }
@@ -116,13 +119,21 @@ export default function GraphCanvas({ nodes, edges, searchTrigger, onStepUpdate,
   const handlePointerUp = useCallback((e) => {
     isDragging.current = false;
     containerRef.current?.releasePointerCapture(e.pointerId);
+    containerRef.current?.classList.remove('is-dragging');
   }, []);
 
   const handleMouseLeave = useCallback(() => setTooltip(null), []);
   
-  const handleWheel = useCallback((e) => {
-    e.preventDefault();
-    handleZoom(e.deltaY);
+  // Native wheel event to prevent browser zooming (passive: false is required)
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const onWheel = (e) => {
+      e.preventDefault();
+      handleZoom(e.deltaY);
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
   }, [handleZoom]);
 
   const statusLabel = { default: 'Not visited', visited: 'Visited', entry: 'Entry point', result: '✓ Result' };
@@ -134,7 +145,7 @@ export default function GraphCanvas({ nodes, edges, searchTrigger, onStepUpdate,
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
       onMouseLeave={handleMouseLeave}
-      onWheel={handleWheel}
+      onContextMenu={(e) => e.preventDefault()}
       style={{ touchAction: 'none' }} // prevent scrolling while dragging
     >
       <canvas ref={canvasRef} className="graph-canvas" />
