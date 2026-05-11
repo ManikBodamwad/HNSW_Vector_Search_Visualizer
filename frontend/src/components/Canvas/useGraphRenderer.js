@@ -38,14 +38,14 @@ function project3D(x3, y3, z3, W, H, cam) {
 /* ── Colors ─────────────────────────────────────────────────────── */
 const C = {
   bg:          '#0A0E1A',
-  nodDefault:  '#3A4A63',
-  nodVisited:  '#2563EB',
-  nodResult:   '#059669',
-  nodQuery:    '#D97706',
-  nodEntry:    '#60A5FA',
-  edgeDefault: 'rgba(96,120,168,0.18)',
-  edgeActive:  '#3B82F6',
-  edgeBrute:   '#EF4444',
+  nodDefault:  'rgba(255, 255, 255, 0.5)',
+  nodVisited:  '#0070F3',
+  nodResult:   '#10B981',
+  nodQuery:    '#F5A623',
+  nodEntry:    '#3291FF',
+  edgeDefault: 'rgba(255, 255, 255, 0.05)',
+  edgeActive:  '#0070F3',
+  edgeBrute:   '#F5A623',
   gridLine:    'rgba(255,255,255,0.018)',
 };
 
@@ -116,8 +116,13 @@ export function useGraphRenderer(canvasRef, nodes, edges) {
     cam.panX += (cam.targetPanX - cam.panX) * 0.15;
     cam.panY += (cam.targetPanY - cam.panY) * 0.15;
 
-    // ── Auto-Camera (Cinematic Tracking) ──
+    // ── Auto-Camera (Cinematic Tracking & Drift) ──
     if (!cam.userInteracted) {
+      if (state.isComplete || state.activePath.length === 0) {
+        // Ambient camera drift when idle or finished
+        cam.targetRotY += 0.0015;
+      }
+      
       if (state.isComplete) {
         // 🌟 Wow Factor: Pull back to reveal the entire path!
         cam.targetPanX = 0;
@@ -159,8 +164,8 @@ export function useGraphRenderer(canvasRef, nodes, edges) {
     for (let gx = 0; gx < W; gx += gridSpacing) {
       for (let gy = 0; gy < H; gy += gridSpacing) {
         ctx.beginPath();
-        ctx.arc(gx, gy, 0.7, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(100, 150, 255, 0.08)'; // Slightly blueish for sci-fi feel
+        ctx.arc(gx, gy, 1, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.03)'; // Minimalist subtle dot
         ctx.fill();
       }
     }
@@ -192,7 +197,7 @@ export function useGraphRenderer(canvasRef, nodes, edges) {
       ctx.beginPath();
       ctx.moveTo(p1.sx, p1.sy);
       ctx.lineTo(p2.sx, p2.sy);
-      ctx.strokeStyle = `rgba(60, 90, 150, ${0.15 * depthAlpha})`;
+      ctx.strokeStyle = `rgba(255, 255, 255, ${0.06 * depthAlpha})`;
       ctx.lineWidth = 0.5;
       ctx.stroke();
     });
@@ -205,10 +210,14 @@ export function useGraphRenderer(canvasRef, nodes, edges) {
 
       const isBrute = state.isBrute;
       
-      // Clean, distinct core line
+      // Elegant Gradient Line
+      const grad = ctx.createLinearGradient(p1.sx, p1.sy, p2.sx, p2.sy);
+      grad.addColorStop(0, isBrute ? 'rgba(245, 166, 35, 0.1)' : 'rgba(0, 112, 243, 0.1)');
+      grad.addColorStop(1, isBrute ? '#F5A623' : '#0070F3');
+      
       ctx.beginPath(); ctx.moveTo(p1.sx, p1.sy); ctx.lineTo(p2.sx, p2.sy);
-      ctx.strokeStyle = isBrute ? '#EF4444' : '#3B82F6';
-      ctx.lineWidth = 2.5; 
+      ctx.strokeStyle = grad;
+      ctx.lineWidth = 2.0; 
       ctx.lineCap = 'round'; 
       ctx.stroke();
     });
@@ -282,6 +291,10 @@ export function useGraphRenderer(canvasRef, nodes, edges) {
 
       const r = baseRadius * scalePerspective;
 
+      // Depth of field (Bokeh) effect
+      const depthAlpha = Math.max(0.1, Math.min(1, 1 - (p.depth + 150) / 400));
+      ctx.globalAlpha = ns === 'default' ? depthAlpha : 1;
+
       // Clean solid fills (removed messy radial gradients)
       ctx.beginPath();
       ctx.arc(p.sx, p.sy, r, 0, Math.PI * 2);
@@ -296,13 +309,7 @@ export function useGraphRenderer(canvasRef, nodes, edges) {
         ctx.fill();
       }
 
-      // Specular highlight for active nodes
-      if (ns !== 'default') {
-        ctx.beginPath();
-        ctx.arc(p.sx - r * 0.3, p.sy - r * 0.3, r * 0.4, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(255,255,255,0.8)';
-        ctx.fill();
-      }
+      ctx.globalAlpha = 1; // Reset opacity
 
       // Result ring pulse
       if (ns === 'result') {
@@ -325,38 +332,35 @@ export function useGraphRenderer(canvasRef, nodes, edges) {
       }
     });
 
-    // ── Query node ──
+    // ── Query node (Precision Target Crosshair) ──
     if (state.queryNodePos) {
       const { x, y, z = 0, pulse } = state.queryNodePos;
       const p = project3D(x, y, z, W, H, cam);
       if (p) {
         const sc = Math.max(0.6, Math.min(1.4, p.scale));
-        const pR = (8 + Math.sin(pulse) * 2) * sc;
+        const pR = 12 * sc;
 
-        // Pulsing rings
-        for (let ring = 0; ring < 3; ring++) {
-          const a = Math.max(0, 0.28 - ring * 0.08) * (0.6 + 0.4 * Math.sin(pulse - ring * 0.7));
-          ctx.beginPath();
-          ctx.arc(p.sx, p.sy, pR + 10 + ring * 10, 0, Math.PI * 2);
-          ctx.strokeStyle = `rgba(217,119,6,${a})`;
-          ctx.lineWidth = 1;
-          ctx.stroke();
-        }
+        // Precision minimalist crosshair
+        ctx.beginPath();
+        ctx.moveTo(p.sx - pR, p.sy); ctx.lineTo(p.sx + pR, p.sy);
+        ctx.moveTo(p.sx, p.sy - pR); ctx.lineTo(p.sx, p.sy + pR);
+        ctx.strokeStyle = '#F5A623';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
 
-        // Glow
-        const g = ctx.createRadialGradient(p.sx, p.sy, 0, p.sx, p.sy, pR * 3.5);
-        g.addColorStop(0, 'rgba(217,119,6,0.4)');
-        g.addColorStop(1, 'transparent');
-        ctx.beginPath(); ctx.arc(p.sx, p.sy, pR * 3.5, 0, Math.PI * 2);
-        ctx.fillStyle = g; ctx.fill();
+        // Pulsing precision outer ring
+        const outerR = pR + 4 + Math.sin(pulse) * 3;
+        ctx.beginPath();
+        ctx.arc(p.sx, p.sy, outerR, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(245, 166, 35, ${0.4 + 0.4 * Math.sin(pulse)})`;
+        ctx.lineWidth = 1;
+        ctx.stroke();
 
-        // Core
-        ctx.beginPath(); ctx.arc(p.sx, p.sy, pR, 0, Math.PI * 2);
-        ctx.fillStyle = C.nodQuery; ctx.fill();
-
-        // Highlight
-        ctx.beginPath(); ctx.arc(p.sx - pR * 0.3, p.sy - pR * 0.3, pR * 0.3, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.fill();
+        // Solid center core
+        ctx.beginPath();
+        ctx.arc(p.sx, p.sy, 3 * sc, 0, Math.PI * 2);
+        ctx.fillStyle = '#F5A623';
+        ctx.fill();
 
         state.queryNodePos.pulse += 0.055;
       }
