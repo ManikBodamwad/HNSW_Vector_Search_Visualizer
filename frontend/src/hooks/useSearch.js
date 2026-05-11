@@ -95,24 +95,12 @@ export function useSearch(searchTrigger, canvasStateRef) {
     setStats(DEFAULT_STATS);  // reset metrics to 0
     setMathState(DEFAULT_MATH);
 
-    const { embedding, clusterId } = getQueryEmbedding(query);
+    const { embedding, clusterId, queryPos } = getQueryEmbedding(query);
     queryEmbRef.current = embedding;
 
     if (canvasStateRef?.current) {
       canvasStateRef.current.queryEmbedding = embedding;
     }
-
-    const clusterCenters = [
-      { x: 180, y: 140 }, { x: 800, y: 150 }, { x: 490, y: 85 },
-      { x: 110, y: 490 }, { x: 880, y: 390 }, { x: 270, y: 700 },
-      { x: 610, y: 700 }, { x: 880, y: 640 }, { x: 680, y: 290 },
-      { x: 460, y: 460 },
-    ];
-    const cc = clusterCenters[clusterId] || clusterCenters[0];
-    const queryPos = {
-      x: Math.min(Math.max(cc.x + (Math.random() - 0.5) * 60, 60), 940),
-      y: Math.min(Math.max(cc.y + (Math.random() - 0.5) * 60, 60), 740),
-    };
 
     const isBrute = algo === 'brute';
     const result = isBrute

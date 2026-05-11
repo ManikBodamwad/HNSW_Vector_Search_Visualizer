@@ -492,10 +492,35 @@ function resolveQueryCluster(queryText) {
 
 export function getQueryEmbedding(queryText) {
   const ci = resolveQueryCluster(queryText);
-  // Query embedding = cluster centroid + small noise (biased toward cluster)
+  
+  // Seed a local PRNG using the query string so the same query ALWAYS returns the exact same embedding
+  let hash = 0;
+  for (let i = 0; i < queryText.length; i++) {
+    hash = ((hash << 5) - hash) + queryText.charCodeAt(i);
+    hash |= 0; // Convert to 32bit int
+  }
+  const queryRng = mkRng(hash ^ 0x1A2B3C4D);
+
+  // Query embedding = cluster centroid + small deterministic noise
   const c = centroids[ci];
-  const raw = c.map(ci_val => ci_val + 0.08 * randNorm(rng));
-  return { embedding: normalize(raw), clusterId: ci };
+  const raw = c.map(ci_val => ci_val + 0.08 * randNorm(queryRng));
+  
+  // Deterministic 2D visual position
+  const clusterCenters = [
+    { x: 180, y: 140 }, { x: 800, y: 150 }, { x: 490, y: 85 },
+    { x: 110, y: 490 }, { x: 880, y: 390 }, { x: 270, y: 700 },
+    { x: 610, y: 700 }, { x: 880, y: 640 }, { x: 680, y: 290 },
+    { x: 460, y: 460 },
+  ];
+  const cc = clusterCenters[ci] || clusterCenters[0];
+  const qx = Math.min(Math.max(cc.x + (queryRng() - 0.5) * 60, 60), 940);
+  const qy = Math.min(Math.max(cc.y + (queryRng() - 0.5) * 60, 60), 740);
+
+  return { 
+    embedding: normalize(raw), 
+    clusterId: ci,
+    queryPos: { x: qx, y: qy }
+  };
 }
 
 export { nodes, edges, centroids, CLUSTERS, cosineSim };
