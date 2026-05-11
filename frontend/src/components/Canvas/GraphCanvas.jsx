@@ -6,7 +6,7 @@ import { dist2D } from '../../engine/similarity.js';
 export default function GraphCanvas({ nodes, edges, searchTrigger, onStepUpdate, onDone }) {
   const canvasRef    = useRef(null);
   const containerRef = useRef(null);
-  const [tooltip, setTooltip] = useState(null);
+  const tooltipRef   = useRef(null);
 
   const { stateRef, startLoop, stopLoop, handleDrag, handleZoom } = useGraphRenderer(canvasRef, nodes, edges);
   const animatorRef = useRef(null);
@@ -72,7 +72,7 @@ export default function GraphCanvas({ nodes, edges, searchTrigger, onStepUpdate,
     lastPos.current = { x: e.clientX, y: e.clientY };
     containerRef.current?.setPointerCapture(e.pointerId);
     containerRef.current?.classList.add('is-dragging');
-    setTooltip(null);
+    if (tooltipRef.current) tooltipRef.current.style.display = 'none';
   }, []);
 
   const handlePointerMove = useCallback((e) => {
@@ -114,13 +114,20 @@ export default function GraphCanvas({ nodes, edges, searchTrigger, onStepUpdate,
         }
         simVal = (dot / (Math.sqrt(nq) * Math.sqrt(np))).toFixed(4);
       }
-      setTooltip({
-        x: Math.min(e.clientX - rect.left + 12, W - 210),
-        y: Math.max(e.clientY - rect.top - 8, 8),
-        node: best.node, id: best.i, status: ns, sim: simVal,
-      });
+      const statusLabel = { default: 'Not visited', visited: 'Visited', entry: 'Entry point', result: '✓ Result' };
+      if (tooltipRef.current) {
+        tooltipRef.current.style.display = 'block';
+        tooltipRef.current.style.left = `${Math.min(e.clientX - rect.left + 12, W - 210)}px`;
+        tooltipRef.current.style.top = `${Math.max(e.clientY - rect.top - 8, 8)}px`;
+        tooltipRef.current.innerHTML = `
+          <div class="tt-id">#${best.i} · ${best.node.clusterName}</div>
+          <div class="tt-text">"${best.node.text}"</div>
+          ${simVal !== null ? `<div class="tt-sim">cos sim = <span>${simVal}</span></div>` : ''}
+          <div class="tt-status">${statusLabel[ns] || 'Not visited'}</div>
+        `;
+      }
     } else {
-      setTooltip(null);
+      if (tooltipRef.current) tooltipRef.current.style.display = 'none';
     }
   }, [nodes, stateRef, handleDrag]);
 
@@ -130,7 +137,9 @@ export default function GraphCanvas({ nodes, edges, searchTrigger, onStepUpdate,
     containerRef.current?.classList.remove('is-dragging');
   }, []);
 
-  const handleMouseLeave = useCallback(() => setTooltip(null), []);
+  const handleMouseLeave = useCallback(() => {
+    if (tooltipRef.current) tooltipRef.current.style.display = 'none';
+  }, []);
   
   // Native wheel event to prevent browser zooming (passive: false is required)
   useEffect(() => {
@@ -158,16 +167,7 @@ export default function GraphCanvas({ nodes, edges, searchTrigger, onStepUpdate,
     >
       <canvas ref={canvasRef} className="graph-canvas" />
 
-      {tooltip && (
-        <div className="node-tooltip" style={{ left: tooltip.x, top: tooltip.y }}>
-          <div className="tt-id">#{tooltip.id} · {tooltip.node.clusterName}</div>
-          <div className="tt-text">"{tooltip.node.text}"</div>
-          {tooltip.sim !== null && (
-            <div className="tt-sim">cos sim = <span>{tooltip.sim}</span></div>
-          )}
-          <div className="tt-status">{statusLabel[tooltip.status] || 'Not visited'}</div>
-        </div>
-      )}
+      <div ref={tooltipRef} className="node-tooltip" style={{ display: 'none' }}></div>
 
       <AnimatorBridge animatorRef={animatorRef} stateRef={stateRef}
         onStepUpdate={handleStepUpdate} onDone={handleDone} />

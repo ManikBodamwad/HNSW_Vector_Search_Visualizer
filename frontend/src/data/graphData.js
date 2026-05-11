@@ -454,35 +454,137 @@ CLUSTERS.forEach((cluster, ci) => {
   });
 });
 
-// ── Build edges (k-NN graph + Long Range Navigable Edges) ───────────────
+// ── Build True HNSW Index ───────────────────────────────────────────────────
 
 const edges = [];
-const NEIGHBORS = 7; 
+let ep = null;
+let maxLayer = -1;
+
+const M = 12;
+const M0 = 24;
+const efConstruction = 40;
+const mL = 1 / Math.log(M);
+
+function searchLayer(q_emb, ep_id, ef, layer, _nodes) {
+  const seen = new Set([ep_id]);
+  const candidates = [{ id: ep_id, sim: cosineSim(q_emb, _nodes[ep_id].embedding) }];
+  const results = [...candidates];
+  
+  while (candidates.length > 0) {
+    candidates.sort((a, b) => b.sim - a.sim);
+    const c = candidates.shift();
+    
+    results.sort((a, b) => b.sim - a.sim);
+    const f = results[results.length - 1]; // worst
+    if (c.sim < f.sim) break;
+    
+    const neighbors = _nodes[c.id].friends[layer] || [];
+    for (const n_id of neighbors) {
+      if (seen.has(n_id)) continue;
+      seen.add(n_id);
+      
+      const sim = cosineSim(q_emb, _nodes[n_id].embedding);
+      results.sort((a, b) => b.sim - a.sim);
+      const f_worst = results[results.length - 1];
+      
+      if (results.length < ef || sim > f_worst.sim) {
+        candidates.push({ id: n_id, sim });
+        results.push({ id: n_id, sim });
+        if (results.length > ef) {
+          results.sort((a, b) => b.sim - a.sim);
+          results.pop();
+        }
+      }
+    }
+  }
+  results.sort((a, b) => b.sim - a.sim);
+  return results;
+}
+
+function pruneConnections(node, layer, M_max, _nodes) {
+  const neighbors = node.friends[layer];
+  const sims = neighbors.map(id => ({
+    id,
+    sim: cosineSim(node.embedding, _nodes[id].embedding)
+  }));
+  sims.sort((a, b) => b.sim - a.sim);
+  return sims.slice(0, M_max).map(s => s.id);
+}
+
+// Initialize node layers
+nodes.forEach(n => {
+  n.friends = [];
+  const l = Math.floor(-Math.log(rng() + 0.0001) * mL); // +0.0001 to prevent log(0)
+  n.layer = l;
+  for (let i = 0; i <= l; i++) n.friends[i] = [];
+});
+
+const flatEdges = [];
 
 for (let i = 0; i < nodes.length; i++) {
-  const sims = [];
-  for (let j = 0; j < nodes.length; j++) {
-    if (i === j) continue;
-    sims.push({ j, sim: cosineSim(nodes[i].embedding, nodes[j].embedding) });
-  }
-  sims.sort((a, b) => b.sim - a.sim);
+  const q = nodes[i];
   
-  // Local nearest neighbors
-  sims.slice(0, NEIGHBORS).forEach(({ j, sim }) => {
-    if (i < j) {
-      edges.push({ from: i, to: j, sim: parseFloat(sim.toFixed(3)) });
+  if (ep === null) {
+    ep = i;
+    maxLayer = q.layer;
+    continue;
+  }
+  
+  let currObj = ep;
+  let currSim = cosineSim(q.embedding, nodes[currObj].embedding);
+  
+  // Coarse search down to q.layer
+  for (let lc = maxLayer; lc > q.layer; lc--) {
+    let changed = true;
+    while (changed) {
+      changed = false;
+      const neighbors = nodes[currObj].friends[lc] || [];
+      for (const neighbor of neighbors) {
+        const sim = cosineSim(q.embedding, nodes[neighbor].embedding);
+        if (sim > currSim) {
+          currSim = sim;
+          currObj = neighbor;
+          changed = true;
+        }
+      }
     }
-  });
-
-  // Long-range small-world edges (connects different clusters)
-  if (i % 5 === 0) {
-    // Pick a deterministic distant node
-    const distantJ = (i + 137) % nodes.length;
-    if (i < distantJ) {
-      edges.push({ from: i, to: distantJ, sim: parseFloat(cosineSim(nodes[i].embedding, nodes[distantJ].embedding).toFixed(3)) });
+  }
+  
+  // Build layers
+  for (let lc = Math.min(maxLayer, q.layer); lc >= 0; lc--) {
+    const W = searchLayer(q.embedding, currObj, efConstruction, lc, nodes);
+    const M_max = lc === 0 ? M0 : M;
+    const neighbors = W.slice(0, M_max).map(w => w.id);
+    
+    for (const neighborId of neighbors) {
+      q.friends[lc].push(neighborId);
+      nodes[neighborId].friends[lc].push(q.id);
+      
+      if (lc === 0) {
+        flatEdges.push({ from: Math.min(q.id, neighborId), to: Math.max(q.id, neighborId) });
+      }
+      
+      if (nodes[neighborId].friends[lc].length > M_max) {
+        nodes[neighborId].friends[lc] = pruneConnections(nodes[neighborId], lc, M_max, nodes);
+      }
     }
+    if (W.length > 0) currObj = W[0].id;
+  }
+  
+  if (q.layer > maxLayer) {
+    ep = i;
+    maxLayer = q.layer;
   }
 }
+
+const edgeSet = new Set();
+flatEdges.forEach(e => {
+  const hash = `${e.from}-${e.to}`;
+  if (!edgeSet.has(hash)) {
+    edgeSet.add(hash);
+    edges.push(e);
+  }
+});
 
 // ── Query resolution ─────────────────────────────────────────────────────────
 
@@ -534,5 +636,5 @@ export function getQueryEmbedding(queryText) {
   };
 }
 
-export { nodes, edges, centroids, CLUSTERS, cosineSim };
-export default { nodes, edges };
+export { nodes, edges, centroids, CLUSTERS, cosineSim, ep, maxLayer };
+export default { nodes, edges, ep, maxLayer };

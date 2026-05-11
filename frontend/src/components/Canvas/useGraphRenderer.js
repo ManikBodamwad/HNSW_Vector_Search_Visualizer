@@ -267,12 +267,20 @@ export function useGraphRenderer(canvasRef, nodes, edges) {
     });
 
     // ── Nodes — sorted back-to-front for correct z-order ──
-    const sortedIdx = projected
-      .map((p, i) => ({ p, i }))
-      .filter(x => x.p !== null)
-      .sort((a, b) => a.p.depth - b.p.depth);
+    const camHash = `${cam.rotY.toFixed(3)}_${cam.rotX.toFixed(3)}_${cam.panX.toFixed(1)}_${cam.panY.toFixed(1)}_${cam.distance.toFixed(1)}`;
+    if (state.lastCamHash !== camHash || !state.sortedIdx) {
+      state.sortedIdx = projected
+        .map((p, i) => ({ p, i }))
+        .filter(x => x.p !== null)
+        .sort((a, b) => a.p.depth - b.p.depth);
+      state.lastCamHash = camHash;
+    } else {
+      state.sortedIdx.forEach(item => {
+        item.p = projected[item.i];
+      });
+    }
 
-    sortedIdx.forEach(({ p, i }) => {
+    state.sortedIdx.forEach(({ p, i }) => {
       const ns = state.nodeStates[i] || 'default';
       const scalePerspective = Math.max(0.4, Math.min(1.6, p.scale));
 
