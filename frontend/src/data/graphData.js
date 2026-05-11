@@ -454,10 +454,10 @@ CLUSTERS.forEach((cluster, ci) => {
   });
 });
 
-// ── Build edges (k-NN graph) ─────────────────────────────────────────────────
+// ── Build edges (k-NN graph + Long Range Navigable Edges) ───────────────
 
 const edges = [];
-const NEIGHBORS = 7; // more edges = denser, more visible graph
+const NEIGHBORS = 7; 
 
 for (let i = 0; i < nodes.length; i++) {
   const sims = [];
@@ -466,11 +466,22 @@ for (let i = 0; i < nodes.length; i++) {
     sims.push({ j, sim: cosineSim(nodes[i].embedding, nodes[j].embedding) });
   }
   sims.sort((a, b) => b.sim - a.sim);
+  
+  // Local nearest neighbors
   sims.slice(0, NEIGHBORS).forEach(({ j, sim }) => {
-    if (i < j && sim > 0.45) {
+    if (i < j && sim > 0.40) {
       edges.push({ from: i, to: j, sim: parseFloat(sim.toFixed(3)) });
     }
   });
+
+  // Long-range small-world edges (connects different clusters)
+  if (i % 5 === 0) {
+    // Pick a deterministic distant node
+    const distantJ = (i + 137) % nodes.length;
+    if (i < distantJ) {
+      edges.push({ from: i, to: distantJ, sim: parseFloat(cosineSim(nodes[i].embedding, nodes[distantJ].embedding).toFixed(3)) });
+    }
+  }
 }
 
 // ── Query resolution ─────────────────────────────────────────────────────────

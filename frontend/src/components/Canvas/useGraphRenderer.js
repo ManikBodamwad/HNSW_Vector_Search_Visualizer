@@ -116,8 +116,8 @@ export function useGraphRenderer(canvasRef, nodes, edges) {
     cam.panX += (cam.targetPanX - cam.panX) * 0.15;
     cam.panY += (cam.targetPanY - cam.panY) * 0.15;
 
-    // Cinematic Auto-Zoom
-    if (!cam.userInteracted && !state.isBrute) {
+    // ── Auto-Camera (Cinematic Tracking) ──
+    if (!cam.userInteracted) {
       if (state.isComplete) {
         // 🌟 Wow Factor: Pull back to reveal the entire path!
         cam.targetPanX = 0;
@@ -394,7 +394,10 @@ export function useGraphRenderer(canvasRef, nodes, edges) {
 
   const handleZoom = useCallback((deltaY) => {
     const cam = stateRef.current.cam;
-    cam.userInteracted = true; // Stop auto-zoom if user zooms
+    // Only stop auto-zoom if the scroll is deliberate (avoids accidental trackpad brushes)
+    if (Math.abs(deltaY) > 5) {
+      cam.userInteracted = true;
+    }
     cam.targetDistance += deltaY * 1.2;
     // Allow zooming way out, but not clipping through the camera
     cam.targetDistance = Math.max(100, Math.min(5000, cam.targetDistance));
