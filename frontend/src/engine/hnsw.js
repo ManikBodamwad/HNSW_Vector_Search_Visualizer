@@ -18,8 +18,9 @@ export function runHNSWSearch(queryEmbedding, nodes, edges, k = 5) {
     });
   }
 
-  // ── Layer 2: coarse entry (pick random start) ──
-  const entryId = Math.floor(Math.random() * n);
+  // ── Layer 2: coarse entry ──
+  // Seed entry point deterministically based on the query embedding so the same query always starts at the same node
+  const entryId = Math.abs(Math.floor(queryEmbedding[0] * 10000)) % n;
   const entrySim = parseFloat(cosineSim(queryEmbedding, nodes[entryId].embedding).toFixed(4));
   steps.push({ nodeId: entryId, sim: entrySim, type: 'entry', layer: 2, hop: 0 });
   seen.add(entryId);
@@ -41,7 +42,10 @@ export function runHNSWSearch(queryEmbedding, nodes, edges, k = 5) {
         const unseen = [];
         for (let i = 0; i < n; i++) if (!seen.has(i)) unseen.push(i);
         if (unseen.length === 0) break;
-        neighbors.push(unseen[Math.floor(Math.random() * unseen.length)]);
+        
+        // Deterministic fallback jump based on embedding and hop index
+        const deterministicIdx = Math.abs(Math.floor(queryEmbedding[1] * 10000 + hop)) % unseen.length;
+        neighbors.push(unseen[deterministicIdx]);
       }
 
       // Take up to efSearch candidates
