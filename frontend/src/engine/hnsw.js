@@ -28,9 +28,9 @@ export function runHNSWSearch(queryEmbedding, nodes, edges, k = 5) {
 
   // ── Greedy traversal ──
   const layerConfig = [
-    { layer: 2, hops: 2, efSearch: 6 },
-    { layer: 1, hops: 3, efSearch: 10 },
-    { layer: 0, hops: 4, efSearch: 16 },
+    { layer: 2, hops: 3, efSearch: 10 },
+    { layer: 1, hops: 4, efSearch: 16 },
+    { layer: 0, hops: 6, efSearch: 32 },
   ];
 
   for (const { layer, hops, efSearch } of layerConfig) {
