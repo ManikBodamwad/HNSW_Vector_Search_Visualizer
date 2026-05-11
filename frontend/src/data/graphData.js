@@ -469,7 +469,7 @@ for (let i = 0; i < nodes.length; i++) {
   
   // Local nearest neighbors
   sims.slice(0, NEIGHBORS).forEach(({ j, sim }) => {
-    if (i < j && sim > 0.40) {
+    if (i < j) {
       edges.push({ from: i, to: j, sim: parseFloat(sim.toFixed(3)) });
     }
   });

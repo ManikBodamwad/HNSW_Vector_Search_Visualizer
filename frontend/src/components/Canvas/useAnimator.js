@@ -49,7 +49,6 @@ export function useAnimator(stateRef, _draw, onStepUpdate, onDone) {
           }
           state.rippleQueue = state.rippleQueue || [];
           state.rippleQueue.push({ id: step.nodeId, isHit: step.isHit });
-          if (isBrute) state.currentNode = step.nodeId;
           break;
         case 'result':
           state.nodeStates[step.nodeId] = 'result';
