@@ -1,7 +1,13 @@
-import { useRef, useCallback } from 'react';
+import { useRef, useCallback, useEffect } from 'react';
 
 export function useAnimator(stateRef, _draw, onStepUpdate, onDone) {
   const timerRef = useRef(null);
+
+  // Keep refs to the latest callbacks so the play closure never goes stale
+  const onDoneRef = useRef(onDone);
+  const onStepUpdateRef = useRef(onStepUpdate);
+  useEffect(() => { onDoneRef.current = onDone; }, [onDone]);
+  useEffect(() => { onStepUpdateRef.current = onStepUpdate; }, [onStepUpdate]);
 
   const cancel = useCallback(() => {
     if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
@@ -15,7 +21,7 @@ export function useAnimator(stateRef, _draw, onStepUpdate, onDone) {
     function playStep(index) {
       if (index >= steps.length) {
         stateRef.current.isComplete = true; // Signal camera to pull back
-        onDone?.();
+        onDoneRef.current?.();
         return;
       }
       const step = steps[index];
@@ -56,7 +62,7 @@ export function useAnimator(stateRef, _draw, onStepUpdate, onDone) {
           break;
       }
 
-      onStepUpdate?.({
+      onStepUpdateRef.current?.({
         stepIndex: index,
         total: steps.length,
         step,
@@ -79,7 +85,7 @@ export function useAnimator(stateRef, _draw, onStepUpdate, onDone) {
     }
 
     playStep(0);
-  }, [cancel, stateRef, onStepUpdate, onDone]);
+  }, [cancel, stateRef]); // No longer depends on onDone/onStepUpdate — uses refs instead
 
   return { play, cancel };
 }
