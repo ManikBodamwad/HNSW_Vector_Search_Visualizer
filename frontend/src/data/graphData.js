@@ -460,9 +460,9 @@ const edges = [];
 let ep = null;
 let maxLayer = -1;
 
-const M = 12;
-const M0 = 24;
-const efConstruction = 40;
+const M = 5;
+const M0 = 10;
+const efConstruction = 30;
 const mL = 1 / Math.log(M);
 
 function searchLayer(q_emb, ep_id, ef, layer, _nodes) {

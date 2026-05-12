@@ -63,7 +63,7 @@ export function runHNSWSearch(queryEmbedding, graphState, k = 5) {
   // ── Coarse search down to layer 1 ──
   for (let lc = maxLayer; lc >= 1; lc--) {
     let changed = true;
-    steps.push({ nodeId: currObj, sim: parseFloat(currSim.toFixed(4)), type: 'entry', layer: lc, hop: steps.length });
+    steps.push({ nodeId: currObj, sim: parseFloat(currSim.toFixed(4)), type: lc === maxLayer ? 'entry' : 'drop', layer: lc, hop: steps.length });
     while (changed) {
       changed = false;
       const neighbors = nodes[currObj].friends[lc] || [];
@@ -94,7 +94,7 @@ export function runHNSWSearch(queryEmbedding, graphState, k = 5) {
   W.push({ id: currObj, sim: currSim });
   C.push({ id: currObj, sim: currSim });
   
-  steps.push({ nodeId: currObj, sim: parseFloat(currSim.toFixed(4)), type: 'entry', layer: 0, hop: steps.length });
+  steps.push({ nodeId: currObj, sim: parseFloat(currSim.toFixed(4)), type: maxLayer === 0 ? 'entry' : 'drop', layer: 0, hop: steps.length });
 
   let bestSimFound = currSim;
 

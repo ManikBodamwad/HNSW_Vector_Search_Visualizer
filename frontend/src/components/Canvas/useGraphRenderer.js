@@ -117,33 +117,33 @@ export function useGraphRenderer(canvasRef, nodes, edges) {
     cam.panY += (cam.targetPanY - cam.panY) * 0.15;
 
     // ── Auto-Camera (Cinematic Tracking & Drift) ──
-    if (!cam.userInteracted) {
-      if (state.isComplete || state.activePath.length === 0) {
-        // Ambient camera drift when idle or finished
-        cam.targetRotY += 0.0015;
-      }
-      
-      if (state.isComplete) {
+    if (state.isComplete || state.activePath.length === 0) {
+      // Ambient camera drift when idle or finished
+      cam.targetRotY += 0.0015;
+    }
+    
+    if (state.isComplete) {
+      if (!cam.userInteracted) {
         // 🌟 Wow Factor: Pull back to reveal the entire path!
         cam.targetPanX = 0;
         cam.targetPanY = 0;
         cam.targetDistance = 650; // Zoom out far enough to see the whole diagram
         cam.targetRotX = 0.22;
-      } else {
-        let focusNode = null;
-        if (state.currentNode !== null) {
-          focusNode = nodes[state.currentNode];
-        } else if (state.queryNodePos) {
-          focusNode = state.queryNodePos;
-        }
-        
-        if (focusNode) {
-          // Pan to center the node, zoom in close during action
-          cam.targetPanX = 500 - focusNode.x;
-          cam.targetPanY = 400 - focusNode.y;
-          cam.targetDistance = 280; // zoom in
-          cam.targetRotX = 0.35;    // look down slightly
-        }
+      }
+    } else if (!cam.userInteracted) {
+      let focusNode = null;
+      if (state.currentNode !== null) {
+        focusNode = nodes[state.currentNode];
+      } else if (state.queryNodePos) {
+        focusNode = state.queryNodePos;
+      }
+      
+      if (focusNode) {
+        // Pan to center the node, zoom in close during action
+        cam.targetPanX = 500 - focusNode.x;
+        cam.targetPanY = 400 - focusNode.y;
+        cam.targetDistance = 280; // zoom in
+        cam.targetRotX = 0.35;    // look down slightly
       }
     }
 

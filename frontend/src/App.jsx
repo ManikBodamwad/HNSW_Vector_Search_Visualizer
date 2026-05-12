@@ -24,10 +24,13 @@ export default function App() {
     setTimeout(() => { runSearch(query, algoOverride ?? algo, speed); }, 60);
   }, [runSearch, algo, speed, setStatus]);
 
-  const handleOverlayDismiss = useCallback(() => {
+  const handleOverlayDismiss = useCallback((launchQuery) => {
     setOverlayDone(true);
-    // No auto-run — user presses Run button
-  }, []);
+    if (launchQuery && typeof launchQuery === 'string') {
+      // Run the chosen example query immediately after the overlay closes
+      setTimeout(() => runSearch(launchQuery, 'hnsw', speed), 120);
+    }
+  }, [runSearch, speed]);
 
   return (
     <div className="app-root">

@@ -10,6 +10,9 @@ export function runBruteForce(queryEmbedding, nodes, k = 5) {
   const allSims = nodes.map((node, i) => {
     const sim = parseFloat(cosineSim(queryEmbedding, node.embedding).toFixed(4));
     steps.push({ nodeId: i, sim, type: 'evaluate', layer: 0, hop: 0 });
+    if (i % 15 === 0) {
+      steps.push({ nodeId: i, sim, type: 'scan', layer: 0, hop: 0 });
+    }
     return { id: i, sim };
   });
 

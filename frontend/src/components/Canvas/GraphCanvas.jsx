@@ -12,6 +12,7 @@ export default function GraphCanvas({ nodes, edges, searchTrigger, onStepUpdate,
   const animatorRef = useRef(null);
 
   const isDragging = useRef(false);
+  const dragType = useRef('pan');
   const lastPos = useRef({ x: 0, y: 0 });
 
   const handleStepUpdate = useCallback((...args) => onStepUpdate?.(...args), [onStepUpdate]);
@@ -73,14 +74,33 @@ export default function GraphCanvas({ nodes, edges, searchTrigger, onStepUpdate,
     containerRef.current?.setPointerCapture(e.pointerId);
     containerRef.current?.classList.add('is-dragging');
     if (tooltipRef.current) tooltipRef.current.style.display = 'none';
-  }, []);
+
+    if (!canvasRef.current || !stateRef.current.sortedIdx) {
+      dragType.current = 'pan';
+      return;
+    }
+    const rect = canvasRef.current.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    
+    let hitNode = false;
+    for (const item of stateRef.current.sortedIdx) {
+      if (item.p && dist2D(mx, my, item.p.sx, item.p.sy) < 25) {
+        hitNode = true;
+        break;
+      }
+    }
+    dragType.current = hitNode ? 'rotate' : 'pan';
+  }, [stateRef]);
 
   const handlePointerMove = useCallback((e) => {
     if (isDragging.current) {
       const dx = e.clientX - lastPos.current.x;
       const dy = e.clientY - lastPos.current.y;
-      // Right click (2) or Shift key allows panning
-      const isPan = e.buttons === 2 || e.shiftKey;
+      
+      let isPan = dragType.current === 'pan';
+      if (e.buttons === 2 || e.shiftKey) isPan = !isPan; // toggle behavior with right-click or shift
+
       handleDrag(dx, dy, isPan);
       lastPos.current = { x: e.clientX, y: e.clientY };
       return;
